@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: test",
+			"command": "test",
+			"problemMatcher": [],
+			"detail": "Run all tests registered with CTest",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Run specific tests",
+			"command": "cd ${workspaceFolder}/build && ctest -R YourTestPattern",
+			"problemMatcher": [],
+			"detail": "Run tests from the test folder",
+			"group": "test"
+		}
+	]
+}
