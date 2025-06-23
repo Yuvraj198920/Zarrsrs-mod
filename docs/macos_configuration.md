@@ -2,6 +2,14 @@
 - Using `sudo` does not help, as the directory still cannot be executed, leading to "command not found."
 
 ---
+How to correctly find the GDAL installation directory on Apple Silicon with Homebrew
+## Check if the GDAL directory exists:
+Run:
+```text
+ls /opt/homebrew/Cellar/gdal/
+
+```
+This will list all installed GDAL versions under Homebrew’s Cellar directory. The directory name should exactly match the version string returned by gdal-config --version, including any suffix like _2.
 
 ## What You Should Do
 
