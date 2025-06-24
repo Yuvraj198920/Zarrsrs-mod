@@ -1,4 +1,6 @@
 #include "gdal_priv.h"
+#include "cpl_error.h"
+#include "cpl_string.h"
 #include "zarr_srs_modifier/zarr_srs_modifier_dataset.h"
 
 void GDALRegister_ZarrSRSModifier() {
