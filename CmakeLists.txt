@@ -5,11 +5,25 @@ project(zarr_srs_modifier VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find GDAL
-find_package(GDAL CONFIG REQUIRED)
-if(NOT GDAL_FOUND)
-    find_package(GDAL REQUIRED)
-endif()
+# Add hints for GDAL location
+# Modify these paths to match your GDAL installation
+set(GDAL_ROOT "C:/OSGeo4W" CACHE PATH "Root directory of GDAL installation")
+# Alternative directories to try if you're using a different installation method
+list(APPEND CMAKE_PREFIX_PATH 
+    "${GDAL_ROOT}"
+    "C:/OSGeo4W64"
+    "C:/Program Files/GDAL"
+    "$ENV{CONDA_PREFIX}"
+)
+
+# Find GDAL with explicit hints
+find_package(GDAL REQUIRED)
+
+# Display GDAL information (helpful for debugging)
+message(STATUS "GDAL found: ${GDAL_FOUND}")
+message(STATUS "GDAL version: ${GDAL_VERSION}")
+message(STATUS "GDAL libraries: ${GDAL_LIBRARIES}")
+message(STATUS "GDAL include dirs: ${GDAL_INCLUDE_DIRS}")
 
 # Include directories
 include_directories(include)
@@ -21,35 +35,47 @@ set(PLUGIN_SOURCES
 )
 
 # Create the plugin library
-add_library(gdal_zarr_srs_modifier SHARED ${PLUGIN_SOURCES})
+add_library(gdal_zarr_srs_modifier MODULE ${PLUGIN_SOURCES})
 
 # Link against GDAL
 target_link_libraries(gdal_zarr_srs_modifier PRIVATE GDAL::GDAL)
 
 # Set plugin properties
-set_target_properties(gdal_zarr_srs_modifier PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME "gdal_zarr_srs_modifier"
-)
-
-# Install plugin
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    execute_process(
-        COMMAND gdal-config --prefix
-        OUTPUT_VARIABLE GDAL_PREFIX
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-    if(GDAL_PREFIX)
-        set(PLUGIN_INSTALL_DIR "${GDAL_PREFIX}/lib/gdalplugins")
-    else()
-        set(PLUGIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/gdalplugins")
-    endif()
+if (WIN32)
+    set_target_properties(gdal_zarr_srs_modifier PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "gdal_zarr_srs_modifier"
+        SUFFIX ".dll")
+        
+    # Add .def file for Windows
+    set(DEF_FILE "${CMAKE_CURRENT_BINARY_DIR}/zarr_srs_modifier_exports.def")
+    file(WRITE ${DEF_FILE} "EXPORTS\n")
+    file(APPEND ${DEF_FILE} "    GDALRegisterMe\n")
+    file(APPEND ${DEF_FILE} "    GDALRegister_ZarrSRSModifier\n")  # Changed to match case in code
+    
+    # Add the .def file to the library
+    target_link_options(gdal_zarr_srs_modifier PRIVATE "/DEF:${DEF_FILE}")
+elseif (APPLE)
+    set_target_properties(gdal_zarr_srs_modifier PROPERTIES
+        PREFIX ""
+        SUFFIX ".dylib")
 else()
-    set(PLUGIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/gdalplugins")
+    set_target_properties(gdal_zarr_srs_modifier PROPERTIES
+        PREFIX ""
+        SUFFIX ".so")
 endif()
 
-install(TARGETS gdal_zarr_srs_modifier
-    LIBRARY DESTINATION ${PLUGIN_INSTALL_DIR}
-    RUNTIME DESTINATION ${PLUGIN_INSTALL_DIR}
+# Install plugin
+if(WIN32)
+    set(GDAL_PLUGINS_DIR "$ENV{GDAL_DRIVER_PATH}" CACHE PATH "Directory where GDAL plugins are installed")
+    if(NOT GDAL_PLUGINS_DIR)
+        set(GDAL_PLUGINS_DIR "$ENV{PROGRAMDATA}/GDAL/plugins")
+    endif()
+else()
+    set(GDAL_PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/lib/gdalplugins" CACHE PATH "Directory where GDAL plugins are installed")
+endif()
+
+install(TARGETS gdal_zarr_srs_modifier 
+    LIBRARY DESTINATION ${GDAL_PLUGINS_DIR}
+    RUNTIME DESTINATION ${GDAL_PLUGINS_DIR}
 )
