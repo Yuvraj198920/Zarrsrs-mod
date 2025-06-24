@@ -1,0 +1,104 @@
+name: Build GDAL Zarr SRS Modifier
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual triggering
+
+env:
+  CMAKE_VERSION: 3.31.2  # Latest compatible version available in GitHub Actions
+  GDAL_VERSION: 3.8.1    # GDAL version to use
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Visual Studio environment
+      uses: microsoft/setup-msbuild@v1.3
+      
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+    
+    - name: Cache GDAL
+      id: cache-gdal
+      uses: actions/cache@v3
+      with:
+        path: C:/OSGeo4W
+        key: ${{ runner.os }}-gdal-${{ env.GDAL_VERSION }}
+    
+    - name: Install OSGeo4W (GDAL + Dev Tools)
+      uses: echoix/setup-OSGeo4W@v0.2.0
+      with:
+        packages: gdal-devel cmake ninja
+        site: https://download.osgeo.org/osgeo4w/v2/
+        root: C:\OSGeo4W
+        arch: x86_64
+        upgrade-also: false
+
+    - name: Setup MSVC 2022
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        vcvars_ver: 14.3
+
+    - name: Build Plugin
+      run: |
+        cmake -S . -B build `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
+          -DCMAKE_PREFIX_PATH="C:/OSGeo4W;C:/OSGeo4W/apps/gdal" `
+          -DGDAL_DIR="C:/OSGeo4W/apps/gdal/lib/cmake/gdal"
+        cmake --build build --config Release
+    
+    - name: Run basic tests
+      run: |
+        cd build
+        set GDAL_DRIVER_PATH=./Release
+        ./Release/test/basic_test.exe
+      shell: cmd
+      continue-on-error: true  # If there's no test binary yet, don't fail the build
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gdal-zarr-srs-modifier-plugin
+        path: |
+          build/Release/gdal_zarr_srs_modifier.dll
+          build/Release/gdal_zarr_srs_modifier.lib
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install GDAL dev packages
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends \
+             gdal-bin libgdal-dev cmake ninja-build build-essential
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+      
+    - name: Build
+      run: |
+        cd build
+        cmake --build .
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gdal-zarr-srs-modifier-plugin-linux
+        path: |
+          build/libgdal_zarr_srs_modifier.so
