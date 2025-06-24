@@ -82,14 +82,16 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
              gdal-bin libgdal-dev cmake ninja-build build-essential
 
-    - name: Configure
+    - name: Configure CMake
       run: |
-        cmake -S . -B build/${{ matrix.cfg }} \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=${{ matrix.cfg }}
-
+        mkdir build
+        cd build
+        cmake ..
+      
     - name: Build
-      run: cmake --build build/${{ matrix.cfg }} --parallel
+      run: |
+        cd build
+        cmake --build .
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
