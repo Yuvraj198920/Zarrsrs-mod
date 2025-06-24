@@ -62,7 +62,7 @@ jobs:
       continue-on-error: true  # If there's no test binary yet, don't fail the build
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gdal-zarr-srs-modifier-plugin
         path: |
@@ -76,24 +76,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Install dependencies
+    - name: Install GDAL dev packages
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libgdal-dev gdal-bin cmake build-essential
-        
-    - name: Configure CMake
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends \
+             gdal-bin libgdal-dev cmake ninja-build build-essential
+
+    - name: Configure
       run: |
-        mkdir build
-        cd build
-        cmake ..
-      
+        cmake -S . -B build/${{ matrix.cfg }} \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ matrix.cfg }}
+
     - name: Build
-      run: |
-        cd build
-        cmake --build .
+      run: cmake --build build/${{ matrix.cfg }} --parallel
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gdal-zarr-srs-modifier-plugin-linux
         path: |
