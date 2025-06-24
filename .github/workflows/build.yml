@@ -32,26 +32,29 @@ jobs:
         path: C:/OSGeo4W
         key: ${{ runner.os }}-gdal-${{ env.GDAL_VERSION }}
     
-    - name: Install GDAL (if not cached)
-      if: steps.cache-gdal.outputs.cache-hit != 'true'
-      run: |
-        # Download and install OSGeo4W network installer
-        Invoke-WebRequest -Uri "https://download.osgeo.org/osgeo4w/v2/osgeo4w-setup.exe" -OutFile "osgeo4w-setup.exe"
-        
-        # Perform silent installation of GDAL
-        Start-Process -FilePath "osgeo4w-setup.exe" -ArgumentList "-q -k -r -A -s https://download.osgeo.org/osgeo4w/v2 -a x86_64 -P gdal,gdal-dev" -Wait
-      shell: pwsh
+    - name: Install OSGeo4W (GDAL + Dev Tools)
+      uses: echoix/setup-OSGeo4W@v0.2.0
+      with:
+        packages: gdal-devel cmake ninja
+        site: https://download.osgeo.org/osgeo4w/v2/
+        root: C:\OSGeo4W
+        arch: x86_64
+        upgrade-also: false
 
-    - name: Configure CMake
+    - name: Setup MSVC 2022
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        vcvars_ver: 14.3
+
+    - name: Build Plugin
       run: |
-        mkdir build
-        cd build
-        cmake -G "Visual Studio 17 2022" -A x64 -DGDAL_ROOT=C:/OSGeo4W ..
-      
-    - name: Build
-      run: |
-        cd build
-        cmake --build . --config Release
+        cmake -S . -B build `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
+          -DCMAKE_PREFIX_PATH="C:/OSGeo4W;C:/OSGeo4W/apps/gdal" `
+          -DGDAL_DIR="C:/OSGeo4W/apps/gdal/lib/cmake/gdal"
+        cmake --build build --config Release
     
     - name: Run basic tests
       run: |
